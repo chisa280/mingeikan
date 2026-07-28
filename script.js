@@ -1,15 +1,15 @@
 // ── 民芸品データ ──────────────────────────────────────────
 // 画像ファイルを images/ フォルダに入れて src を更新してください
 const ARTIFACTS = {
-  "artifact_001": { name: "虎の置物1", src: "images/001.png", scale: 1},
-  "artifact_002": { name: "脱穀機", src: "images/002.png", scale: 2,},
-  "artifact_003": { name: "木彫りのだるま", src: "images/003.png", scale: 0.6},
-  "artifact_004": { name: "塑像", src: "images/004.png", scale: 5},
-  "artifact_005": { name: "蓄音機", src: "images/005.png", scale: 0.8},
-  "artifact_006": { name: "絵画", src: "images/006.png", scale: 3},
-  "artifact_007": { name: "虎の置物2", src: "images/007.png", scale: 1},
-  "artifact_008": { name: "日本兵のヘルメット", src: "images/008.png", scale: 0.5},
-  "artifacr_009": { name: "ガラスのブイ", src: "images/009.png", scale: 0.5},
+  "artifact_001": { name: "虎の置物1", src: "images/001.PNG", scale: 1},
+  "artifact_002": { name: "脱穀機", src: "images/002.PNG", scale: 2,},
+  "artifact_003": { name: "木彫りのだるま", src: "images/003.PNG", scale: 0.6},
+  "artifact_004": { name: "塑像", src: "images/004.PNG", scale: 5},
+  "artifact_005": { name: "蓄音機", src: "images/005.PNG", scale: 0.8},
+  "artifact_006": { name: "絵画", src: "images/006.PNG", scale: 3},
+  "artifact_007": { name: "虎の置物2", src: "images/007.PNG", scale: 1},
+  "artifact_008": { name: "日本兵のヘルメット", src: "images/008.PNG", scale: 0.5},
+  "artifacr_009": { name: "ガラスのブイ", src: "images/009.PNG", scale: 0.5},
 };
 
 const MESSAGES = [

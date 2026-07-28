@@ -1,13 +1,13 @@
 // ── 民芸品データ ──────────────────────────────────────────
 const ARTIFACTS = {
   "artifact_001": { name: "虎の置物1", src: "images/001.PNG", desc: "", scale: 1 },
-  "artifact_002": { name: "脱穀機", src: "images/002.PNG", desc: "", scale: 3 },
-  "artifact_003": { name: "木彫りのだるま", src: "images/003.PNG", desc: "", scale: 0.5 },
-  "artifact_004": { name: "塑像", src: "images/004.PNG", desc: "", scale: 6 },
-  "artifact_005": { name: "絵画", src: "images/006.PNG", desc: "", scale: 4 },
+  "artifact_002": { name: "脱穀機", src: "images/002.PNG", desc: "", scale: 1 },
+  "artifact_003": { name: "木彫りのだるま", src: "images/003.PNG", desc: "", scale: 1 },
+  "artifact_004": { name: "塑像", src: "images/004.PNG", desc: "", scale: 1 },
+  "artifact_005": { name: "絵画", src: "images/006.PNG", desc: "", scale: 1 },
   "artifact_006": { name: "虎の置物2", src: "images/007.PNG", desc: "", scale: 1 },
-  "artifact_007": { name: "日本兵のヘルメット", src: "images/008.PNG", desc: "", scale: 0.5 },
-  "artifact_008": { name: "ガラスのブイ", src: "images/009.PNG", desc: "", scale: 0.5 },
+  "artifact_007": { name: "日本兵のヘルメット", src: "images/008.PNG", desc: "", scale: 1 },
+  "artifact_008": { name: "ガラスのブイ", src: "images/009.PNG", desc: "", scale: 1 },
 };
 
 const MESSAGES = [
@@ -102,32 +102,67 @@ function placeArtifact(id, save = true) {
   updateUI();
 }
 
-// ── ドラッグ（マウス＆タッチ） ────────────────────────────
+// ── ドラッグ＆ピンチ（マウス＆タッチ） ───────────────────
 function makeDraggable(el) {
   let startX, startY, origLeft, origTop;
+  let currentScale = 1;
+  let pinchStartDist = null;
+  let pinchStartScale = 1;
+  let origWidth, origHeight;
+
+  function getDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
 
   function onStart(e) {
     e.preventDefault();
-    const p = e.touches ? e.touches[0] : e;
-    startX = p.clientX;
-    startY = p.clientY;
-    origLeft = parseInt(el.style.left);
-    origTop  = parseInt(el.style.top);
     el.style.zIndex = Date.now();
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onEnd);
-    document.addEventListener('touchmove', onMove, { passive: false });
-    document.addEventListener('touchend', onEnd);
+
+    if (e.touches && e.touches.length === 2) {
+      // ピンチ開始
+      pinchStartDist = getDistance(e.touches);
+      pinchStartScale = currentScale;
+      origWidth  = el.offsetWidth;
+      origHeight = el.offsetHeight;
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onEnd);
+    } else {
+      // 1本指ドラッグ開始
+      const p = e.touches ? e.touches[0] : e;
+      startX = p.clientX;
+      startY = p.clientY;
+      origLeft = parseInt(el.style.left);
+      origTop  = parseInt(el.style.top);
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onEnd);
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onEnd);
+    }
   }
 
   function onMove(e) {
     e.preventDefault();
-    const p = e.touches ? e.touches[0] : e;
-    el.style.left = (origLeft + p.clientX - startX) + 'px';
-    el.style.top  = (origTop  + p.clientY - startY) + 'px';
+
+    if (e.touches && e.touches.length === 2 && pinchStartDist) {
+      // ピンチで拡大縮小
+      const dist = getDistance(e.touches);
+      currentScale = Math.min(Math.max(pinchStartScale * (dist / pinchStartDist), 0.2), 5);
+      el.style.width  = (origWidth  / pinchStartScale * currentScale) + 'px';
+      el.style.height = (origHeight / pinchStartScale * currentScale) + 'px';
+    } else {
+      // 1本指ドラッグ
+      const p = e.touches ? e.touches[0] : e;
+      el.style.left = (origLeft + p.clientX - startX) + 'px';
+      el.style.top  = (origTop  + p.clientY - startY) + 'px';
+    }
   }
 
-  function onEnd() {
+  function onEnd(e) {
+    if (!e.touches || e.touches.length < 2) {
+      pinchStartDist = null;
+    }
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onEnd);
     document.removeEventListener('touchmove', onMove);

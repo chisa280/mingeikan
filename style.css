@@ -124,16 +124,18 @@ body {
   position: fixed;
   top: 1rem;
   right: 1rem;
-  padding: .5rem 1rem;
-  background: rgba(30,26,20,0.85);
+  padding: .75rem 1.4rem;
+  background: rgba(30,26,20,0.9);
   border: 0.5px solid #4a4540;
-  border-radius: 20px;
-  color: #7a7268;
-  font-size: 12px;
+  border-radius: 24px;
+  color: #9a9488;
+  font-size: 15px;
   cursor: pointer;
   font-family: inherit;
   letter-spacing: .05em;
   z-index: 50;
+  min-width: 80px;
+  min-height: 44px;
   transition: background .15s, border-color .15s, color .15s;
 }
 #btn-reset:hover { border-color: #9a9488; color: #e8e4dc; }

@@ -1,15 +1,13 @@
 // ── 民芸品データ ──────────────────────────────────────────
-// 画像ファイルを images/ フォルダに入れて src を更新してください
 const ARTIFACTS = {
-  "artifact_001": { name: "虎の置物1", src: "images/001.PNG", scale: 1},
-  "artifact_002": { name: "脱穀機", src: "images/002.PNG", scale: 2,},
-  "artifact_003": { name: "木彫りのだるま", src: "images/003.PNG", scale: 0.6},
-  "artifact_004": { name: "塑像", src: "images/004.PNG", scale: 5},
-  "artifact_005": { name: "蓄音機", src: "images/005.PNG", scale: 0.8},
-  "artifact_006": { name: "絵画", src: "images/006.PNG", scale: 3},
-  "artifact_007": { name: "虎の置物2", src: "images/007.PNG", scale: 1},
-  "artifact_008": { name: "日本兵のヘルメット", src: "images/008.PNG", scale: 0.5},
-  "artifacr_009": { name: "ガラスのブイ", src: "images/009.PNG", scale: 0.5},
+  "artifact_001": { name: "虎の置物1", src: "images/001.PNG", desc: "", scale: 1 },
+  "artifact_002": { name: "脱穀機", src: "images/002.PNG", desc: "", scale: 3 },
+  "artifact_003": { name: "木彫りのだるま", src: "images/003.PNG", desc: "", scale: 0.5 },
+  "artifact_004": { name: "塑像", src: "images/004.PNG", desc: "", scale: 6 },
+  "artifact_005": { name: "絵画", src: "images/006.PNG", desc: "", scale: 4 },
+  "artifact_006": { name: "虎の置物2", src: "images/007.PNG", desc: "", scale: 1 },
+  "artifact_007": { name: "日本兵のヘルメット", src: "images/008.PNG", desc: "", scale: 0.5 },
+  "artifact_008": { name: "ガラスのブイ", src: "images/009.PNG", desc: "", scale: 0.5 },
 };
 
 const MESSAGES = [
@@ -28,15 +26,31 @@ const MESSAGES = [
 let placed = [];
 let pendingArtifact = null;
 
+// ── localStorageで配置を永続保持 ──────────────────────────
+function savePlaced() {
+  localStorage.setItem('mingeikan_placed', JSON.stringify(placed));
+}
+function loadPlaced() {
+  try {
+    const saved = localStorage.getItem('mingeikan_placed');
+    return saved ? JSON.parse(saved) : [];
+  } catch(e) { return []; }
+}
+
 // ── 起動 ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  checkScan();
+  // 保存済みの民芸品を復元
+  const savedPlaced = loadPlaced();
+  savedPlaced.forEach(id => placeArtifact(id, false));
+
+  // URLパラメータからスキャン検出
+  checkUrlParam();
+
   document.getElementById('btn-place').addEventListener('click', onPlace);
 });
 
 // ── URLパラメータからスキャンを検出 ───────────────────────
-// QRコードのURLは: https://yourdomain.com/?id=artifact_001
-function checkScan() {
+function checkUrlParam() {
   const params = new URLSearchParams(location.search);
   const id = params.get('id');
   if (id && ARTIFACTS[id]) {
@@ -45,6 +59,7 @@ function checkScan() {
   }
 }
 
+// ── 民芸品オーバーレイを表示 ──────────────────────────────
 function showOverlay(id) {
   const a = ARTIFACTS[id];
   pendingArtifact = id;
@@ -56,19 +71,21 @@ function showOverlay(id) {
 
 function onPlace() {
   if (!pendingArtifact) return;
-  placeArtifact(pendingArtifact);
+  placeArtifact(pendingArtifact, true);
   document.getElementById('scan-overlay').classList.add('hide');
   pendingArtifact = null;
 }
 
 // ── 民芸品を空間に配置 ────────────────────────────────────
-function placeArtifact(id) {
+function placeArtifact(id, save = true) {
   const a = ARTIFACTS[id];
+  if (!a) return;
   const room = document.getElementById('room');
   const W = room.offsetWidth;
   const H = room.offsetHeight;
 
-  const size = 80 + Math.random() * 60;
+  const base = 80 + Math.random() * 60;
+  const size = base * (a.scale || 1);
   const x = 0.1 * W + Math.random() * 0.8 * W - size / 2;
   const y = 0.1 * H + Math.random() * 0.7 * H - size / 2;
   const rot = (Math.random() - 0.5) * 24;
@@ -81,6 +98,7 @@ function placeArtifact(id) {
   makeDraggable(el);
   room.appendChild(el);
   placed.push(id);
+  if (save) savePlaced();
   updateUI();
 }
 

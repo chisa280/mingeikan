@@ -33,14 +33,13 @@ body {
   cursor: grab;
   user-select: none;
   touch-action: none;
-  transition: filter .15s, transform .15s;
+  transition: filter .15s;
   transform-origin: center center;
   animation: appear .4s ease forwards;
 }
 .artifact:active {
   cursor: grabbing;
   filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
-  transform: scale(1.05);
 }
 .artifact img {
   width: 100%;

@@ -1,13 +1,13 @@
 // ── 民芸品データ ──────────────────────────────────────────
 const ARTIFACTS = {
-  "artifact_001": { name: "虎の置物1", src: "images/001.PNG", desc: "", scale: 1 },
-  "artifact_002": { name: "脱穀機", src: "images/002.PNG", desc: "", scale: 1 },
-  "artifact_003": { name: "木彫りのだるま", src: "images/003.PNG", desc: "", scale: 1 },
-  "artifact_004": { name: "塑像", src: "images/004.PNG", desc: "", scale: 1 },
-  "artifact_005": { name: "絵画", src: "images/006.PNG", desc: "", scale: 1 },
-  "artifact_006": { name: "虎の置物2", src: "images/007.PNG", desc: "", scale: 1 },
-  "artifact_007": { name: "日本兵のヘルメット", src: "images/008.PNG", desc: "", scale: 1 },
-  "artifact_008": { name: "ガラスのブイ", src: "images/009.PNG", desc: "", scale: 1 },
+  "artifact_001": { name: "民芸品1", src: "images/001.PNG", desc: "", scale: 1 },
+  "artifact_002": { name: "民芸品2", src: "images/002.PNG", desc: "", scale: 1 },
+  "artifact_003": { name: "民芸品3", src: "images/003.PNG", desc: "", scale: 1 },
+  "artifact_004": { name: "民芸品4", src: "images/004.PNG", desc: "", scale: 1 },
+  "artifact_005": { name: "民芸品5", src: "images/006.PNG", desc: "", scale: 1 },
+  "artifact_006": { name: "民芸品6", src: "images/007.PNG", desc: "", scale: 1 },
+  "artifact_007": { name: "民芸品7", src: "images/008.PNG", desc: "", scale: 1 },
+  "artifact_008": { name: "民芸品8", src: "images/009.PNG", desc: "", scale: 1 },
 };
 
 const MESSAGES = [
@@ -115,49 +115,42 @@ function applyTransform(el) {
   el.style.transform = `rotate(${rot}deg) scale(${scale})`;
 }
 
-// ── ドラッグ＆ピンチ ──────────────────────────────────────
+// ── ドラッグ＆ダブルタップ拡大縮小 ───────────────────────
 function makeInteractive(el) {
   let dragStartX, dragStartY, origLeft, origTop;
-  let pinchStartDist = null;
-  let pinchStartScale = 1;
-
-  function getDistance(touches) {
-    const dx = touches[0].clientX - touches[1].clientX;
-    const dy = touches[0].clientY - touches[1].clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
+  let lastTapTime = 0;
+  let tapCount = 0;
+  const SCALES = [1, 1.8, 0.5]; // タップするたびに切り替わるサイズ
 
   el.addEventListener('touchstart', e => {
     e.preventDefault();
     el.style.zIndex = Date.now();
 
-    if (e.touches.length === 2) {
-      pinchStartDist  = getDistance(e.touches);
-      pinchStartScale = el._state.scale;
-    } else if (e.touches.length === 1) {
-      dragStartX = e.touches[0].clientX;
-      dragStartY = e.touches[0].clientY;
-      origLeft   = parseFloat(el.style.left);
-      origTop    = parseFloat(el.style.top);
+    if (e.touches.length === 1) {
+      const now = Date.now();
+      if (now - lastTapTime < 300) {
+        // ダブルタップ：サイズを切り替え
+        tapCount = (tapCount + 1) % SCALES.length;
+        el._state.scale = SCALES[tapCount];
+        applyTransform(el);
+      } else {
+        // シングルタップ：ドラッグ開始
+        dragStartX = e.touches[0].clientX;
+        dragStartY = e.touches[0].clientY;
+        origLeft   = parseFloat(el.style.left);
+        origTop    = parseFloat(el.style.top);
+      }
+      lastTapTime = now;
     }
   }, { passive: false });
 
   el.addEventListener('touchmove', e => {
     e.preventDefault();
-
-    if (e.touches.length === 2 && pinchStartDist) {
-      const dist = getDistance(e.touches);
-      el._state.scale = Math.min(Math.max(pinchStartScale * (dist / pinchStartDist), 0.2), 5);
-      applyTransform(el);
-    } else if (e.touches.length === 1 && dragStartX !== undefined) {
+    if (e.touches.length === 1 && dragStartX !== undefined) {
       el.style.left = (origLeft + e.touches[0].clientX - dragStartX) + 'px';
       el.style.top  = (origTop  + e.touches[0].clientY - dragStartY) + 'px';
     }
   }, { passive: false });
-
-  el.addEventListener('touchend', e => {
-    if (e.touches.length < 2) pinchStartDist = null;
-  });
 
   // マウス用ドラッグ
   el.addEventListener('mousedown', e => {

@@ -22,11 +22,10 @@ const MESSAGES = [
   "すべてが集まった。ここは、もう別の場所だ"
 ];
 
-// ── 状態 ──────────────────────────────────────────────────
 let placed = [];
 let pendingArtifact = null;
 
-// ── localStorageで配置を永続保持 ──────────────────────────
+// ── localStorage ──────────────────────────────────────────
 function savePlaced() {
   localStorage.setItem('mingeikan_placed', JSON.stringify(placed));
 }
@@ -39,17 +38,13 @@ function loadPlaced() {
 
 // ── 起動 ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // 保存済みの民芸品を復元
-  const savedPlaced = loadPlaced();
-  savedPlaced.forEach(id => placeArtifact(id, false));
-
-  // URLパラメータからスキャン検出
+  loadPlaced().forEach(id => placeArtifact(id, false));
   checkUrlParam();
-
   document.getElementById('btn-place').addEventListener('click', onPlace);
+  document.getElementById('btn-reset').addEventListener('click', onReset);
 });
 
-// ── URLパラメータからスキャンを検出 ───────────────────────
+// ── URLパラメータ ─────────────────────────────────────────
 function checkUrlParam() {
   const params = new URLSearchParams(location.search);
   const id = params.get('id');
@@ -59,7 +54,7 @@ function checkUrlParam() {
   }
 }
 
-// ── 民芸品オーバーレイを表示 ──────────────────────────────
+// ── オーバーレイ ──────────────────────────────────────────
 function showOverlay(id) {
   const a = ARTIFACTS[id];
   pendingArtifact = id;
@@ -76,7 +71,16 @@ function onPlace() {
   pendingArtifact = null;
 }
 
-// ── 民芸品を空間に配置 ────────────────────────────────────
+// ── リセット ──────────────────────────────────────────────
+function onReset() {
+  if (!confirm('集めた民芸品を全部削除しますか？')) return;
+  localStorage.removeItem('mingeikan_placed');
+  placed = [];
+  document.querySelectorAll('.artifact').forEach(el => el.remove());
+  updateUI();
+}
+
+// ── 民芸品を配置 ──────────────────────────────────────────
 function placeArtifact(id, save = true) {
   const a = ARTIFACTS[id];
   if (!a) return;
@@ -84,31 +88,38 @@ function placeArtifact(id, save = true) {
   const W = room.offsetWidth;
   const H = room.offsetHeight;
 
-  const base = 80 + Math.random() * 60;
-  const size = base * (a.scale || 1);
+  const baseSize = 80 + Math.random() * 60;
+  const size = baseSize * (a.scale || 1);
   const x = 0.1 * W + Math.random() * 0.8 * W - size / 2;
   const y = 0.1 * H + Math.random() * 0.7 * H - size / 2;
-  const rot = (Math.random() - 0.5) * 24;
+  const initRot = (Math.random() - 0.5) * 24;
 
   const el = document.createElement('div');
   el.className = 'artifact';
-  el.style.cssText = `left:${x}px;top:${y}px;width:${size}px;height:${size}px;transform:rotate(${rot}deg)`;
+  el.style.cssText = `left:${x}px; top:${y}px; width:${size}px; height:${size}px;`;
   el.innerHTML = `<img src="${a.src}" alt="${a.name}" title="${a.name}">`;
 
-  makeDraggable(el);
+  // 状態をelに持たせる
+  el._state = { rot: initRot, scale: 1 };
+  applyTransform(el);
+
+  makeInteractive(el);
   room.appendChild(el);
   placed.push(id);
   if (save) savePlaced();
   updateUI();
 }
 
-// ── ドラッグ＆ピンチ（マウス＆タッチ） ───────────────────
-function makeDraggable(el) {
-  let startX, startY, origLeft, origTop;
-  let currentScale = 1;
+function applyTransform(el) {
+  const { rot, scale } = el._state;
+  el.style.transform = `rotate(${rot}deg) scale(${scale})`;
+}
+
+// ── ドラッグ＆ピンチ ──────────────────────────────────────
+function makeInteractive(el) {
+  let dragStartX, dragStartY, origLeft, origTop;
   let pinchStartDist = null;
   let pinchStartScale = 1;
-  let origWidth, origHeight;
 
   function getDistance(touches) {
     const dx = touches[0].clientX - touches[1].clientX;
@@ -116,67 +127,63 @@ function makeDraggable(el) {
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  function onStart(e) {
+  el.addEventListener('touchstart', e => {
     e.preventDefault();
     el.style.zIndex = Date.now();
 
-    if (e.touches && e.touches.length === 2) {
-      // ピンチ開始
-      pinchStartDist = getDistance(e.touches);
-      pinchStartScale = currentScale;
-      origWidth  = el.offsetWidth;
-      origHeight = el.offsetHeight;
-      document.addEventListener('touchmove', onMove, { passive: false });
-      document.addEventListener('touchend', onEnd);
-    } else {
-      // 1本指ドラッグ開始
-      const p = e.touches ? e.touches[0] : e;
-      startX = p.clientX;
-      startY = p.clientY;
-      origLeft = parseInt(el.style.left);
-      origTop  = parseInt(el.style.top);
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onEnd);
-      document.addEventListener('touchmove', onMove, { passive: false });
-      document.addEventListener('touchend', onEnd);
+    if (e.touches.length === 2) {
+      pinchStartDist  = getDistance(e.touches);
+      pinchStartScale = el._state.scale;
+    } else if (e.touches.length === 1) {
+      dragStartX = e.touches[0].clientX;
+      dragStartY = e.touches[0].clientY;
+      origLeft   = parseFloat(el.style.left);
+      origTop    = parseFloat(el.style.top);
     }
-  }
+  }, { passive: false });
 
-  function onMove(e) {
+  el.addEventListener('touchmove', e => {
     e.preventDefault();
 
-    if (e.touches && e.touches.length === 2 && pinchStartDist) {
-      // ピンチで拡大縮小
+    if (e.touches.length === 2 && pinchStartDist) {
       const dist = getDistance(e.touches);
-      currentScale = Math.min(Math.max(pinchStartScale * (dist / pinchStartDist), 0.2), 5);
-      el.style.width  = (origWidth  / pinchStartScale * currentScale) + 'px';
-      el.style.height = (origHeight / pinchStartScale * currentScale) + 'px';
-    } else {
-      // 1本指ドラッグ
-      const p = e.touches ? e.touches[0] : e;
-      el.style.left = (origLeft + p.clientX - startX) + 'px';
-      el.style.top  = (origTop  + p.clientY - startY) + 'px';
+      el._state.scale = Math.min(Math.max(pinchStartScale * (dist / pinchStartDist), 0.2), 5);
+      applyTransform(el);
+    } else if (e.touches.length === 1 && dragStartX !== undefined) {
+      el.style.left = (origLeft + e.touches[0].clientX - dragStartX) + 'px';
+      el.style.top  = (origTop  + e.touches[0].clientY - dragStartY) + 'px';
     }
-  }
+  }, { passive: false });
 
-  function onEnd(e) {
-    if (!e.touches || e.touches.length < 2) {
-      pinchStartDist = null;
+  el.addEventListener('touchend', e => {
+    if (e.touches.length < 2) pinchStartDist = null;
+  });
+
+  // マウス用ドラッグ
+  el.addEventListener('mousedown', e => {
+    e.preventDefault();
+    el.style.zIndex = Date.now();
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    origLeft   = parseFloat(el.style.left);
+    origTop    = parseFloat(el.style.top);
+
+    function onMove(e) {
+      el.style.left = (origLeft + e.clientX - dragStartX) + 'px';
+      el.style.top  = (origTop  + e.clientY - dragStartY) + 'px';
     }
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onEnd);
-    document.removeEventListener('touchmove', onMove);
-    document.removeEventListener('touchend', onEnd);
-  }
-
-  el.addEventListener('mousedown', onStart);
-  el.addEventListener('touchstart', onStart, { passive: false });
+    function onUp() {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
 }
 
 // ── UI更新 ────────────────────────────────────────────────
 function updateUI() {
   const n = placed.length;
   document.getElementById('count-num').textContent = n + ' 点';
-  const idx = Math.min(n, MESSAGES.length - 1);
-  document.getElementById('msg').textContent = MESSAGES[idx];
+  document.getElementById('msg').textContent = MESSAGES[Math.min(n, MESSAGES.length - 1)];
 }

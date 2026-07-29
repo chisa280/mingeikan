@@ -1,13 +1,13 @@
 // ── 民芸品データ ──────────────────────────────────────────
 const ARTIFACTS = {
-  "artifact_001": { name: "虎の置物1", src: "images/001.PNG", desc: "", scale: 1 },
-  "artifact_002": { name: "脱穀機", src: "images/002.PNG", desc: "", scale: 2 },
-  "artifact_003": { name: "木彫りのだるま", src: "images/003.PNG", desc: "", scale: 0.7 },
-  "artifact_004": { name: "塑像", src: "images/004.PNG", desc: "", scale: 3 },
-  "artifact_005": { name: "絵画", src: "images/006.PNG", desc: "", scale: 2.5 },
-  "artifact_006": { name: "虎の置物2", src: "images/007.PNG", desc: "", scale: 1 },
+  "artifact_001": { name: "虎の置物1",       src: "images/001.PNG", desc: "", scale: 1   },
+  "artifact_002": { name: "脱穀機",           src: "images/002.PNG", desc: "", scale: 2   },
+  "artifact_003": { name: "木彫りのだるま",   src: "images/003.PNG", desc: "", scale: 0.7 },
+  "artifact_004": { name: "塑像",             src: "images/004.PNG", desc: "", scale: 3   },
+  "artifact_005": { name: "絵画",             src: "images/006.PNG", desc: "", scale: 2.5 },
+  "artifact_006": { name: "虎の置物2",       src: "images/007.PNG", desc: "", scale: 1   },
   "artifact_007": { name: "日本兵のヘルメット", src: "images/008.PNG", desc: "", scale: 0.6 },
-  "artifact_008": { name: "ガラスのブイ", src: "images/009.PNG", desc: "", scale: 0.7 },
+  "artifact_008": { name: "ガラスのブイ",     src: "images/009.PNG", desc: "", scale: 0.7 },
 };
 
 const MESSAGES = [
@@ -22,10 +22,12 @@ const MESSAGES = [
   "すべてが集まった。ここは、もう別の場所だ"
 ];
 
+// ── 状態 ──────────────────────────────────────────────────
+// placed = [{ id, x, y, size, rot }, ...]
 let placed = [];
 let pendingArtifact = null;
 
-// ── localStorage ──────────────────────────────────────────
+// ── localStorage（位置・サイズ・回転も保存） ──────────────
 function savePlaced() {
   localStorage.setItem('mingeikan_placed', JSON.stringify(placed));
 }
@@ -38,7 +40,7 @@ function loadPlaced() {
 
 // ── 起動 ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  loadPlaced().forEach(id => placeArtifact(id, false));
+  loadPlaced().forEach(data => placeArtifact(data, false));
   checkUrlParam();
   document.getElementById('btn-place').addEventListener('click', onPlace);
   document.getElementById('btn-reset').addEventListener('click', onReset);
@@ -66,7 +68,17 @@ function showOverlay(id) {
 
 function onPlace() {
   if (!pendingArtifact) return;
-  placeArtifact(pendingArtifact, true);
+  const room = document.getElementById('room');
+  const W = room.offsetWidth;
+  const H = room.offsetHeight;
+  const a = ARTIFACTS[pendingArtifact];
+  const size = 80 * (a.scale || 1); // ランダムなし・固定サイズ
+  const x = 0.1 * W + Math.random() * 0.8 * W - size / 2;
+  const y = 0.1 * H + Math.random() * 0.7 * H - size / 2;
+  const rot = (Math.random() - 0.5) * 24;
+
+  const data = { id: pendingArtifact, x, y, size, rot };
+  placeArtifact(data, true);
   document.getElementById('scan-overlay').classList.add('hide');
   pendingArtifact = null;
 }
@@ -81,53 +93,37 @@ function onReset() {
 }
 
 // ── 民芸品を配置 ──────────────────────────────────────────
-function placeArtifact(id, save = true) {
-  const a = ARTIFACTS[id];
+// data = { id, x, y, size, rot }
+function placeArtifact(data, save = true) {
+  const a = ARTIFACTS[data.id];
   if (!a) return;
   const room = document.getElementById('room');
-  const W = room.offsetWidth;
-  const H = room.offsetHeight;
-
-  const baseSize = 80 + Math.random() * 60;
-  const size = baseSize * (a.scale || 1);
-  const x = 0.1 * W + Math.random() * 0.8 * W - size / 2;
-  const y = 0.1 * H + Math.random() * 0.7 * H - size / 2;
-  const initRot = (Math.random() - 0.5) * 24;
 
   const el = document.createElement('div');
   el.className = 'artifact';
-  el.style.cssText = `left:${x}px; top:${y}px; width:${size}px; height:${size}px;`;
+  el.style.cssText = `left:${data.x}px; top:${data.y}px; width:${data.size}px; height:${data.size}px;`;
   el.innerHTML = `<img src="${a.src}" alt="${a.name}" title="${a.name}">`;
-
-  // 状態をelに持たせる
-  el._state = { rot: initRot, scale: 1 };
+  el._state = { rot: data.rot };
   applyTransform(el);
 
   makeInteractive(el);
   room.appendChild(el);
-  placed.push(id);
+  placed.push(data);
   if (save) savePlaced();
   updateUI();
 }
 
 function applyTransform(el) {
-  const { rot, scale } = el._state;
-  el.style.transform = `rotate(${rot}deg) scale(${scale})`;
+  el.style.transform = `rotate(${el._state.rot}deg)`;
 }
 
-// ── ドラッグ＆ダブルタップ拡大縮小 ───────────────────────
+// ── ドラッグ ──────────────────────────────────────────────
 function makeInteractive(el) {
   let dragStartX, dragStartY, origLeft, origTop;
-  let lastTapTime = 0;
-  let tapCount = 0;
-  const SCALES = [1, 1.8, 0.5]; // タップするたびに切り替わるサイズ
-
-  let hasMoved = false;
 
   el.addEventListener('touchstart', e => {
     e.preventDefault();
     el.style.zIndex = Date.now();
-    hasMoved = false;
     if (e.touches.length === 1) {
       dragStartX = e.touches[0].clientX;
       dragStartY = e.touches[0].clientY;
@@ -138,23 +134,11 @@ function makeInteractive(el) {
 
   el.addEventListener('touchmove', e => {
     e.preventDefault();
-    hasMoved = true;
-    if (e.touches.length === 1 && dragStartX !== undefined) {
+    if (e.touches.length === 1) {
       el.style.left = (origLeft + e.touches[0].clientX - dragStartX) + 'px';
       el.style.top  = (origTop  + e.touches[0].clientY - dragStartY) + 'px';
     }
   }, { passive: false });
-
-  el.addEventListener('touchend', e => {
-    if (hasMoved) return;
-    const now = Date.now();
-    if (now - lastTapTime < 300) {
-      tapCount = (tapCount + 1) % SCALES.length;
-      el._state.scale = SCALES[tapCount];
-      applyTransform(el);
-    }
-    lastTapTime = now;
-  });
 
   // マウス用ドラッグ
   el.addEventListener('mousedown', e => {

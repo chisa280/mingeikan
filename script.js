@@ -122,35 +122,39 @@ function makeInteractive(el) {
   let tapCount = 0;
   const SCALES = [1, 1.8, 0.5]; // タップするたびに切り替わるサイズ
 
+  let hasMoved = false;
+
   el.addEventListener('touchstart', e => {
     e.preventDefault();
     el.style.zIndex = Date.now();
-
+    hasMoved = false;
     if (e.touches.length === 1) {
-      const now = Date.now();
-      if (now - lastTapTime < 300) {
-        // ダブルタップ：サイズを切り替え
-        tapCount = (tapCount + 1) % SCALES.length;
-        el._state.scale = SCALES[tapCount];
-        applyTransform(el);
-      } else {
-        // シングルタップ：ドラッグ開始
-        dragStartX = e.touches[0].clientX;
-        dragStartY = e.touches[0].clientY;
-        origLeft   = parseFloat(el.style.left);
-        origTop    = parseFloat(el.style.top);
-      }
-      lastTapTime = now;
+      dragStartX = e.touches[0].clientX;
+      dragStartY = e.touches[0].clientY;
+      origLeft   = parseFloat(el.style.left);
+      origTop    = parseFloat(el.style.top);
     }
   }, { passive: false });
 
   el.addEventListener('touchmove', e => {
     e.preventDefault();
+    hasMoved = true;
     if (e.touches.length === 1 && dragStartX !== undefined) {
       el.style.left = (origLeft + e.touches[0].clientX - dragStartX) + 'px';
       el.style.top  = (origTop  + e.touches[0].clientY - dragStartY) + 'px';
     }
   }, { passive: false });
+
+  el.addEventListener('touchend', e => {
+    if (hasMoved) return;
+    const now = Date.now();
+    if (now - lastTapTime < 300) {
+      tapCount = (tapCount + 1) % SCALES.length;
+      el._state.scale = SCALES[tapCount];
+      applyTransform(el);
+    }
+    lastTapTime = now;
+  });
 
   // マウス用ドラッグ
   el.addEventListener('mousedown', e => {

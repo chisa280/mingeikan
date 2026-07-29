@@ -1,6 +1,6 @@
 // ── 民芸品データ ──────────────────────────────────────────
 const ARTIFACTS = {
-  "artifact_001": { name: "民芸品1", src: "images/001.PNG", desc: "", scale: 1 },
+  "artifact_001": { name: "虎の置物1", src: "images/001.PNG", desc: "", scale: 1 },
   "artifact_002": { name: "民芸品2", src: "images/002.PNG", desc: "", scale: 1 },
   "artifact_003": { name: "民芸品3", src: "images/003.PNG", desc: "", scale: 1 },
   "artifact_004": { name: "民芸品4", src: "images/004.PNG", desc: "", scale: 1 },
